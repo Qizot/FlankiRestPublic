@@ -1,0 +1,102 @@
+version: '3'
+services:
+  database:
+    image: postgres
+    environment:
+      POSTGRES_DB: flanki_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: toor
+    volumes:
+      - ${FLANECZKI_DATA}/database:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    networks:
+      - app_network
+      - secret_network
+
+  flanki:
+    build: ./FlankiApp
+    environment:
+      - ENABLE_SSL=true
+    env_file:
+      - ./Docker_config/app.env
+    volumes:
+      - ${FLANECZKI_DATA}/ssl_certs:/ssl_certs
+    ports:
+      - "8443:8443"
+    depends_on:
+      - database
+      - image_service
+      - auth_server
+    links:
+      - database
+      - image_service
+    networks:
+      - app_network
+      - secret_network
+
+  image_service:
+    build: ./ImageServer
+    ports:
+      - "5555:5555"
+    volumes:
+      - ${FLANECZKI_DATA}/images:/images
+    networks:
+      - secret_network
+
+  auth_server:
+    build: ./AuthorizationServer
+    env_file:
+      - ./Docker_config/auth.env
+    ports:
+      - "5000:5000"
+    depends_on:
+      - database
+    links:
+      - database
+    networks:
+      - secret_network
+
+  frontend:
+    build: ./FrontendServer
+    ports:
+      - "443:443"
+    depends_on:
+      - load_balancer
+    environment:
+      - FRONTEND_BUILD_PATH=/build
+      - ENABLE_SSL=true
+    volumes:
+      - ${FLANECZKI_DATA}/frontend/build:/build
+      - ${FLANECZKI_DATA}/ssl_certs:/ssl_certs
+    networks:
+      - app_network
+
+  load_balancer:
+    build: ./Nginx
+    ports:
+      - "80:80"
+    networks:
+      - app_network
+
+  chat:
+    build: ./Chat
+    ports:
+      - "8081:8081"
+    depends_on:
+      - flanki
+    networks:
+      - app_network
+      - secret_network
+    env_file:
+      - ./Docker_config/chat.env
+    volumes:
+      - ${FLANECZKI_DATA}/ssl_certs:/ssl_certs
+volumes:
+  database-volume:
+  images-volume:
+
+networks:
+  secret_network:
+    internal: true
+  app_network:

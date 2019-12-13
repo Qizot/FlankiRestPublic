@@ -1,0 +1,122 @@
+Motivated by a strong will to play everything starts by creating a lobby by one of the players who since now is known as a game master.
+
+Game master sets match parameters like: maximum number of players, location(optional, possibly to be
+used by front end apps to navigate match location), password(optional). After that registration begins, players join the lobby.
+When the master decides that lobby is done(well configured and filled with players) he closes the lobby which fires up the match.
+Then the game of Flanki proceeds. After the match the game results can be either voted democratically or be decided by game master.
+Afterwards, the match is from now claimed as finished and can no longer be changed. The results are archived in order to track further rankings.
+
+General ideas:
+- By design player should be able to be in one lobby at a time, that means in either one lobby or one match(dangerous design)
+- After finished match it would be cool to post ending photo representing 2 rival teams(or just the winning team in case the losers want to
+go cry to mummy)
+- Just for recognition, teams could be like 'Blue' and 'Red'. It will be easier to navigate among already drunk players
+- When joining a lobby one should be able to register its beer(and here comes the tricky part, should the beers be restricted by the API?
+ There are hundreads of them, but we know that students don't drink expensive ones, if so, there should be admin registration or sth, if not,
+ players would be char limited when it comes to naming but then there would not be such thing as beer rankings)
+ - The game's results voting part, not sure how to solve it, maybe if too many people disagree with the result that game master posted, it might
+ be cancelled. If not, then it would have to be 100% play fair game(maybe game masters will be given karma for good decisions?)
+
+
+API ideas:
+- another db table for player statistics, would be easier to make rankings, might include if player is in a lobby or match at that time
+
+
+ API functionality:
+ - register and login
+ - update account information
+ - creating new lobby, updating, deleting, kicking out unwanted players
+ - from existing lobby create a match
+ - list all available lobbies
+ - getting single lobby information
+ - joining existing lobby, leaving
+ - obtaining ranking information
+ - list matches' summaries of player requesting
+ - list recently finished matches that the players was not part of
+
+ Models:
+    Token - authorization token used for api requests
+
+    Account:
+    - id
+    - nickname
+    - sex
+    - email
+    - password
+    - token
+    - description (FURTHER DEVELOPMENT)
+    - photo URL (FURTHER DEVELOPMENT)
+
+    Lobby:
+    - lobby id
+    - game master's id
+    - maximum players
+    - password
+    - access (either public or private)
+    - status (either closed or active)
+    - create_date
+    IMPORTANT IN DEVELOPMENT
+    - blue_ids ('Blue' team players ids separated by ';')
+    - red_ids ('Red' team players ids separated by ';')
+    // the api would not be much advanced but the lobby increments must be atomic at some point,
+    // people cant join already full teamteam that is already full
+
+    Match:
+    - match id
+    - lobby's id (lobby must be closed) // should we include game master's id once more or lobby id is enough?
+    - result (winning team name)
+    - finish_date
+    - photo URL (FURTHER DEVELOPMENT)
+
+Requests(functional ones, not yet REST):
+    join_lobby:
+        {
+            lobby_id: (int64),
+            "beer": "your favorite drink of all time"
+        }
+    // id will be hidden in a token so there is no need to include it in json body
+    leave_lobby:
+        // blank
+    leave_match:
+        // only available if the match is on and not closed yet
+    // both leave commands dont need any id's because API is designed to offer only one lobby and match at a time
+
+    kick_player:
+        {
+            "id": (int64)
+        }
+    // as above, if the player is a game master he is only in one lobby at a time so it would not be a problem to pass  player id to be kicked
+
+    move_player:
+        {
+            "id": (int64),
+            "team": "Red" or "Blue"
+        }
+
+REST design:
+`I intent to name domain like app.flanki.pl so I avoid app/ rest paths, keep it simple`
+
+/user/login          | METHOD POST
+/user/new            | METHOD POST
+/user/me             | METHOD PUT
+
+
+/players/{userID}    | METHOD GET
+/players             | METHOD GET
+
+/lobbies/create      | METHOD POST
+/lobbies/{lobbyID}   | METHOD GET
+/lobbies/{lobbyID}   | METHOD PUT
+/lobbies/{lobbyID}   | METHOD DELETE
+/lobbies/{lobbyID}/submit | METHOD POST // submits lobby as ready for match and deletes it from lobbies list
+
+/lobbies/{lobbyID}/join  | METHOD POST
+/lobbies/{lobbyID}/leave | METHOD POST
+
+/matches/{matchID}       | METHOD GET
+/matches/{matchID}/leave | METHOD POST // fails if match ended
+
+
+
+
+
